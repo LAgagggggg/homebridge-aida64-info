@@ -1,5 +1,5 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "Aida64HomebridgePlugin",
   "pluginType": "platform",
   "singular": true,
   "schema": {
