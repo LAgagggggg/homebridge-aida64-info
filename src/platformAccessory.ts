@@ -17,6 +17,7 @@ export class GPUFanPlatformAccessory {
   private accessoryState = {
     On: true,
     RotationSpeed: 0,
+    GPUTemp: 0,
   };
 
   constructor(
@@ -51,6 +52,12 @@ export class GPUFanPlatformAccessory {
       // .onSet(this.setRotationSpeed.bind(this))      // SET - bind to the 'setBrightness` method below
       .onGet(this.getRotationSpeed.bind(this));
 
+    const temperatureSensorName = 'GPU temperature';
+    const temperatureSensorService = this.accessory.getService(temperatureSensorName) ||
+      this.accessory.addService(this.platform.Service.TemperatureSensor, temperatureSensorName, temperatureSensorName);
+    temperatureSensorService.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
+      .onGet(this.getGPUTemerature.bind(this));
+
     /**
      * Creating multiple services of the same type.
      *
@@ -79,17 +86,10 @@ export class GPUFanPlatformAccessory {
     //  *
     //  */
     // let motionDetected = false;
-    // setInterval(() => {
-    //   // EXAMPLE - inverse the trigger
-    //   motionDetected = !motionDetected;
-
-    //   // push the new value to HomeKit
-    //   motionSensorOneService.updateCharacteristic(this.platform.Characteristic.MotionDetected, motionDetected);
-    //   motionSensorTwoService.updateCharacteristic(this.platform.Characteristic.MotionDetected, !motionDetected);
-
-    //   this.platform.log.debug('Triggering motionSensorOneService:', motionDetected);
-    //   this.platform.log.debug('Triggering motionSensorTwoService:', !motionDetected);
-    // }, 10000);
+    this.updateInfoFromHttp();
+    setInterval(() => {
+      this.updateInfoFromHttp();
+    }, 3000);
   }
 
   /**
@@ -141,18 +141,24 @@ export class GPUFanPlatformAccessory {
 
   async getRotationSpeed(): Promise<CharacteristicValue> {
     // this.platform.log.debug('Get Characteristic RotationSpeed');
-    let result = 0;
+    return this.accessoryState.RotationSpeed;
+  }
+
+  async getGPUTemerature(): Promise<CharacteristicValue> {
+    // this.platform.log.debug('Get Characteristic RotationSpeed');
+    return this.accessoryState.GPUTemp;
+  }
+
+  async updateInfoFromHttp() {
     try {
       const response = await got('http://192.168.0.112:5556/system_info', {responseType: 'text'});
       // this.platform.log.info('getting HTTP response:', response);
       const params = JSON.parse(response.body);
-      result = params.DGPU1.value;
+      this.accessoryState.RotationSpeed = params.DGPU1.value;
+      this.accessoryState.GPUTemp = params.TGPU1.value;
     } catch (error) {
-      result = 0;
+      this.platform.log.info('HTTP error:', error);
     }
-    this.accessoryState.RotationSpeed = result;
-    this.platform.log.info('getting GPU RotationSpeed:', result);
-    return result;
   }
 
 }
