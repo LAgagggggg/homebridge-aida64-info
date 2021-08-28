@@ -1,5 +1,5 @@
+import got from 'got';
 import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
-
 import { Aida64HomebridgePlatform } from './platform';
 
 /**
@@ -16,7 +16,7 @@ export class GPUFanPlatformAccessory {
    */
   private accessoryState = {
     On: true,
-    RotationSpeed: 65,
+    RotationSpeed: 0,
   };
 
   constructor(
@@ -48,7 +48,8 @@ export class GPUFanPlatformAccessory {
 
     // register handlers for the Brightness Characteristic
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
-      .onSet(this.setBrightness.bind(this));       // SET - bind to the 'setBrightness` method below
+      // .onSet(this.setRotationSpeed.bind(this))      // SET - bind to the 'setBrightness` method below
+      .onGet(this.getRotationSpeed.bind(this));
 
     /**
      * Creating multiple services of the same type.
@@ -97,7 +98,7 @@ export class GPUFanPlatformAccessory {
    */
   async setOn(value: CharacteristicValue) {
     // implement your own code to turn your device on/off
-    this.accessoryState.On = value as boolean;
+    // this.accessoryState.On = value as boolean;
 
     this.platform.log.debug('Set Characteristic On ->', value);
   }
@@ -117,7 +118,7 @@ export class GPUFanPlatformAccessory {
    */
   async getOn(): Promise<CharacteristicValue> {
     // implement your own code to check if the device is on
-    const isOn = this.accessoryState.On;
+    const isOn = this.accessoryState.RotationSpeed >= 0;
 
     this.platform.log.debug('Get Characteristic On ->', isOn);
 
@@ -131,11 +132,27 @@ export class GPUFanPlatformAccessory {
    * Handle "SET" requests from HomeKit
    * These are sent when the user changes the state of an accessory, for example, changing the Brightness
    */
-  async setBrightness(value: CharacteristicValue) {
+  async setRotationSpeed(value: CharacteristicValue) {
     // implement your own code to set the brightness
-    this.accessoryState.RotationSpeed = value as number;
+    // this.accessoryState.RotationSpeed = value as number;
 
     this.platform.log.debug('Set Characteristic Brightness -> ', value);
+  }
+
+  async getRotationSpeed(): Promise<CharacteristicValue> {
+    // this.platform.log.debug('Get Characteristic RotationSpeed');
+    let result = 0;
+    try {
+      const response = await got('http://192.168.0.112:5556/system_info', {responseType: 'text'});
+      // this.platform.log.info('getting HTTP response:', response);
+      const params = JSON.parse(response.body);
+      result = params.DGPU1.value;
+    } catch (error) {
+      result = 0;
+    }
+    this.accessoryState.RotationSpeed = result;
+    this.platform.log.info('getting GPU RotationSpeed:', result);
+    return result;
   }
 
 }
