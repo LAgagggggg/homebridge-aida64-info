@@ -118,7 +118,7 @@ export class GPUFanPlatformAccessory {
    */
   async getOn(): Promise<CharacteristicValue> {
     // implement your own code to check if the device is on
-    const isOn = this.accessoryState.RotationSpeed >= 0;
+    const isOn = this.accessoryState.RotationSpeed > 0;
 
     this.platform.log.debug('Get Characteristic On ->', isOn);
 
@@ -150,14 +150,18 @@ export class GPUFanPlatformAccessory {
   }
 
   async updateInfoFromHttp() {
+    this.platform.log.info('updateInfoFromHttp');
     try {
-      const response = await got('http://192.168.0.112:5556/system_info', {responseType: 'text'});
+      const response = await got('http://192.168.0.112:5556/system_info', {responseType: 'text', retry: 0, timeout: 1000});
       // this.platform.log.info('getting HTTP response:', response);
       const params = JSON.parse(response.body);
       this.accessoryState.RotationSpeed = params.DGPU1.value;
       this.accessoryState.GPUTemp = params.TGPU1.value;
+      this.platform.log.info(`Getting GPU Info: temperature: ${params.TGPU1.value}, fan speed: ${params.DGPU1.value}`);
     } catch (error) {
-      this.platform.log.info('HTTP error:', error);
+      this.platform.log.info('Getting HTTP error.');
+      this.accessoryState.RotationSpeed = 0;
+      this.accessoryState.GPUTemp = 0;
     }
   }
 
